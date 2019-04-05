@@ -1,7 +1,6 @@
 # SHELLGUARD
 This is a simple tool which helps you protect your ELF binary.
 
-
 # Prerequisites
 - python  
 - pwntools & [binutils](http://docs.pwntools.com/en/stable/install/binutils.html)
@@ -18,8 +17,18 @@ method1:
 3. hook a plt and jump to your shellcode
 
 method2:
-1. store shellcode in the .eh_phem
-
+1. store shellcode in the .eh_frame_hdr and .eh_frame
+```
+pwndbg> telescope 0x401088+8
+00:0000│   0x401090 (__GNU_EH_FRAME_HDR+8) ◂— mov    rax, 0x602050
+01:0008│   0x401098 (__GNU_EH_FRAME_HDR+16) ◂— mov    esi, dword ptr [rax]
+02:0010│   0x4010a0 (__GNU_EH_FRAME_HDR+24) ◂— add    byte ptr [rdi], cl
+03:0018│   0x4010a8 (__GNU_EH_FRAME_HDR+32) ◂— push   rbp
+04:0020│   0x4010b0 (__GNU_EH_FRAME_HDR+40) ◂— sub    esp, 0x100
+05:0028│   0x4010b8 (__GNU_EH_FRAME_HDR+48) ◂— rol    byte ptr [rsi], 0
+06:0030│   0x4010c0 (__GNU_EH_FRAME_HDR+56) ◂— 0x7fff000000000006
+07:0038│   0x4010c8 (__GNU_EH_FRAME_HDR+64) ◂— push   rax
+```
 
 # Tree
 ```
@@ -66,7 +75,8 @@ LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
 - function pltHook  
     Hook one function's plt to jump to the shellcode.
 
-demo:
+# demo
+## method 1
 ```bash
 [*] 
              __         ____                           __
@@ -102,6 +112,36 @@ demo:
 [*] Protected file is ./samples/heapcreator.protected
 ```
 
-
+## method2
+```bash
+[*] 
+             __         ____                           __
+       _____/ /_  ___  / / /___ ___  ______ __________/ /
+      / ___/ __ \/ _ \/ / / __ `/ / / / __ `/ ___/ __  / 
+     (__  ) / / /  __/ / / /_/ / /_/ / /_/ / /  / /_/ /  
+    /____/_/ /_/\___/_/_/\__, /\__,_/\__,_/_/   \__,_/   
+                        /____/            
+    								[thinkycx@gmail.com]						
+    	
+[*] 	 find GNU_EH_FRAME @0x401088
+[*] [1] start to copy shellcode
+[*] ================copy shellcode================
+[*] 	 shellcode base @ 0x401088 
+[*] 	 malloc PLT @ 0x400700, GOT @ 0x602050
+[*] 	 filename: ./samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
+[*] 	           new PLT @ 0x401145 
+[*] 	           PLT: 	 jmp [rip+0x200f05]
+[*] 	 shellcode length: 0xc3
+[*] [2] plt hook
+[*] ================hook func@plt================
+[*] 	 patching malloc@plt 0x400700...
+[*] 	 shellcode load va : 0x401088
+[*] 	 jmp shellcode : 	 jmp [rip+0x982]
+[*] 	 relative_offset 0x982
+[*] 	 filename: ./samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
+[*] 	 filename: ./samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 82 09 00 00       jmp    DWORD PTR ds:0x982 
+[*] =======================enjoy=======================
+[*] Protected file is ./samples/heapcreator-eh_frame.protected
+```
 
 

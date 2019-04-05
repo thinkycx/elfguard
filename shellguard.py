@@ -101,7 +101,7 @@ def addSegment(filename):
 				new_phdr = util.replaceStr(new_phdr, 0x10, p64(0x400000 + raw_filesize))                 # p_pvaddr
 				new_phdr = util.replaceStr(new_phdr, 0x18, p64(0x400000 + raw_filesize))                 # p_paddr
 				new_phdr = util.replaceStr(new_phdr, 0x20, p64(len(phdr_table) + e_phentsize + 0xc3))    # p_filesz
-				new_phdr = util.replaceStr(new_phdr, 0x28, p64(len(phdr_table) + e_phentsize + segAlign + 0xc3))# p_memsz
+				new_phdr = util.replaceStr(new_phdr, 0x28, p64(len(phdr_table) + e_phentsize + 0xc3))# p_memsz
 				phdr.insert(i+1, new_phdr)
 				break
 
@@ -187,22 +187,7 @@ def pltHook(elf, func_name, addr_addr):
 	util.showDisasm(filename, func_plt_addr, 6)
 
 
-if __name__ == '__main__':
-	context.local(arch='amd64', os='linux')
-
-	# show menu
-	if len(sys.argv) < 2:
-		showMenu(usage=1)
-		os._exit(0)
-	else:
-		showMenu(usage=0)
-
-	# get filename
-	filename = sys.argv[1]
-	log.debug("filename: %s" % filename)
-	if not os.path.exists(filename):
-		os._exit(-1)
-
+def method1(filename):
 	# 1. add a segment
 	expanded_filename = filename + '.expanded'
 	shutil.copyfile(filename, expanded_filename)
@@ -227,3 +212,53 @@ if __name__ == '__main__':
 	pltHook(elf, func_name, shellcode_base)
 	log.info("="*0x17 + 'enjoy' + "="*0x17)
 	log.info("Protected file is %s" % filename_protected)
+
+
+def method2(filename):
+	"""
+	use .eh_frame_hdr and .eh_frame to store shellcode, which is r-x when the program loads
+	the space is: 0x401088 - 0x402000
+	thanks to p4nda@DUBHE http://p4nda.top/2018/07/02/patch-in-pwn/
+	:param filename:
+	:return:
+	"""
+	eh_frame_filename = filename + '-eh_frame.protected'
+	shutil.copyfile(filename, eh_frame_filename)
+
+	elf = ELF(eh_frame_filename, checksec=False)
+	eh_frame_hdr_addr = 0
+	for segment in elf.segments:
+		if segment.header.p_type == 'PT_GNU_EH_FRAME':
+			eh_frame_hdr_addr = segment.header.p_vaddr
+			log.info("\t find GNU_EH_FRAME @0x%x" % eh_frame_hdr_addr)
+			break
+
+	log.info("[1] start to copy shellcode")
+	func_name = [i for i in elf.plt][0]
+	copyShellcode(elf, func_name, eh_frame_hdr_addr)
+
+	log.info("[2] plt hook")
+	pltHook(elf, func_name, eh_frame_hdr_addr)
+
+	log.info("="*0x17 + 'enjoy' + "="*0x17)
+	log.info("Protected file is %s" % eh_frame_filename)
+
+
+
+if __name__ == '__main__':
+	context.local(arch='amd64', os='linux')
+
+	# show menu
+	if len(sys.argv) < 2:
+		showMenu(usage=1)
+		os._exit(0)
+	else:
+		showMenu(usage=0)
+
+	# get filename
+	filename = sys.argv[1]
+	log.debug("filename: %s" % filename)
+	if not os.path.exists(filename):
+		os._exit(-1)
+
+	method2(filename)
