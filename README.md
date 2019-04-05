@@ -77,26 +77,27 @@ demo:
                         /____/            
     								[thinkycx@gmail.com]						
     	
-[*] ================start to add segment================
-[*] stage1: copy Program header table to the end...
-[*] stage2: add new PT_LOAD phdr entry
+[*] ================add segment================
+[*] [1] copy Program header table to the end...
+[*] [2] add new PT_LOAD phdr entry
 [*] 	 find PT_PHDR, going to fix it...
 [*] 	 find first PT_LOAD, going to add a new PT_LOAD...
-[*] ================start to copy shellcode================
-[*] 	 GOT address: 0x602050
-[*] 	 plt address: 0x400700
-[*] 	 disasm:    0:   ff 25 4a 19 20 00       jmp    QWORD PTR [rip+0x20194a]        # 0x201950
-[*] 	 shellcode start virtual address 0x4036e0 
-[*] 	 shellcode new jmp GOT virtual address 0x403795 
-[*] 	 shellcode length 0xc3
-[*] ================start to hook func@plt================
+[*] 	 len(phdr_table) + e_phentsize : 230
+[*] 	 output filename: ./samples/heapcreator.expanded 
+[*] ================copy shellcode================
+[*] 	 shellcode base @ 0x403718 
+[*] 	 malloc PLT @ 0x400700, GOT @ 0x602050
+[*] 	 filename: ./samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
+[*] 	           new PLT @ 0x4037d5 
+[*] 	           PLT: 	 jmp [rip+0x1fe875]
+[*] 	 shellcode length: 0xc3
+[*] ================hook func@plt================
 [*] 	 patching malloc@plt 0x400700...
-[*] 	 shellcode load va : 0x4036e0
-[*] 	 jmp shellcode  : 	 jmp [rip+0x2fd2]
-[*] 	 relative_offset 0x2fd2
-[*] 	 disasm:   400700:       ff 25 4a 19 20 00       jmp    QWORD PTR [rip+0x20194a]        # 0x602050
-[*] 	 patch...
-[*] 	 disasm:   400700:       ff 25 d2 2f 00 00       jmp    QWORD PTR [rip+0x2fd2]        # 0x4036d8
+[*] 	 shellcode load va : 0x403718
+[*] 	 jmp shellcode : 	 jmp [rip+0x3012]
+[*] 	 relative_offset 0x3012
+[*] 	 filename: ./samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
+[*] 	 filename: ./samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 12 30 00 00       jmp    DWORD PTR ds:0x3012 
 [*] =======================enjoy=======================
 [*] Protected file is ./samples/heapcreator.protected
 ```

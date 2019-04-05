@@ -45,8 +45,8 @@ def addSegment(filename):
 	e_phoff = elf.header.e_phoff                # Elf64_Ehdr->e_phoff       /* Program header table file offset */
 	e_phnum = elf.header.e_phnum                # Elf64_Ehdr->e_phnum       /* Program header table entry count */
 	e_phentsize = elf.header.e_phentsize        # Elf64_Ehdr0>e_phentsize   /* Program header table entry size */
-	log.info("raw filesize %s" % hex(raw_filesize))
-	log.info("e_phoff: " + hex(e_phoff) + " e_phnum: " + hex(e_phnum) + " e_phentsize: " + hex(e_phentsize))
+	log.debug("raw filesize %s" % hex(raw_filesize))
+	log.debug("e_phoff: " + hex(e_phoff) + " e_phnum: " + hex(e_phnum) + " e_phentsize: " + hex(e_phentsize))
 
 	with open(filename, 'rb+') as fd:
 		# append program header table to the end and fix Elf64_Ehdr->e_phoff
