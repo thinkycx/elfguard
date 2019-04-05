@@ -6,6 +6,7 @@ util.py
 
 provide some util functions ...
 """
+from pwn import ELF, disasm, log
 
 def replaceStr(str, start, piece):
 	'''
@@ -18,7 +19,34 @@ def replaceStr(str, start, piece):
 	return str[0:start] + piece + str[start+len(piece):]
 
 
-plt_hook_once = '''             
+def showDisasm(filename, vaddr, length):
+	"""
+	show disassembly code at offset
+	:param filename:
+	:param vaddr:
+	:param length:
+	:return:
+	"""
+	elf = ELF(filename, checksec=False)
+	offset = elf.vaddr_to_offset(vaddr)
+	with open(filename, 'rb+') as fd:
+		fd.seek(offset, 0)
+		assembly = fd.read(length)
+
+	disassembly = disasm(assembly, vma=vaddr)
+	log.info("\t filename: %s vaddr: 0x%x disasmmbly: %s " % (filename, vaddr, disassembly))
+
+'''
+	# see func@PLT disasm
+	# fd.seek(func_plt_addr & 0xfffff, 0)                                # get file
+	# plt_first_asm = fd.read(6)
+	# plt_disasm = disasm(plt_first_asm, arch='amd64', os='linux')
+	# log.info("\t disasm: " + plt_disasm)
+'''
+
+
+
+plt_hook_condition = '''             
 mov rax, 0x%x;
 mov r14, qword ptr [rax];
 cmp r14, 0x%x;

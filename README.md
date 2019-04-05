@@ -12,9 +12,13 @@ python shellguard.py <FILENAME>
 ```
 
 # What does it do?
+method1:
 1. add a segment to store shellcode in ELF binary
 2. copy a seccomp shellcode to the segment
-2. hook a plt and jump to your shellcode
+3. hook a plt and jump to your shellcode
+
+method2:
+1. store shellcode in the .eh_phem
 
 
 # Tree
@@ -24,7 +28,6 @@ samples/
     heapcreator                 the vulnerable program
     heapcreator.expanded        segment expanded
     heapcreator.protected       output of shellguard
-    heapcreator.stage1          temp file when expand the segment
     start.sh                    give it permissions to run
     
 SECCOMP/
