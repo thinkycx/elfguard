@@ -113,21 +113,21 @@ def addSegment(filename):
 		fd.write(new_phdr_table)
 
 
-def copyShellcode(elf, func_name, shellcode_vaddr):
+def generateShellcode(elf, func_name, shellcode_vaddr):
 	"""
-	generate shellcode : contidion + seccomp + func_plt0(changable, related to vaddr & GOT)
-	copy the vaddr
+	generate SECCOMP shellcode : contidion + seccomp + func_plt0
+	shellcode is  related to shellcode_vaddr & func_name @ GOT addr
 	:param elf:
 	:param func_name:
+	:param shellcode_vaddr: shellcode base addr
 	:return:
 	"""
-	log.info("="*0x10 + "copy shellcode" + "="*0x10)
+	log.info("="*0x10 + "generate shellcode" + "="*0x10)
 	log.info("\t shellcode base @ 0x%x " % shellcode_vaddr)
 
 	filename = elf.file.name
 	func_plt_addr = elf.plt[func_name]
 	func_got_addr = elf.got[func_name]
-	shellcode_offset = elf.vaddr_to_offset(shellcode_vaddr)
 
 	log.info("\t %s PLT @ 0x%x, GOT @ 0x%x" % (func_name, func_plt_addr, func_got_addr))
 	util.showDisasm(filename, func_plt_addr, 6)
@@ -148,12 +148,23 @@ def copyShellcode(elf, func_name, shellcode_vaddr):
 	#                   address + (condition + seccomp) + new_plt
 	shellcode = p64(shellcode_vaddr+8) + shellcode_asm + new_plt_asm
 	log.info("\t shellcode length: 0x%x" % len(shellcode))
+	return shellcode
 
-	# write shellcode at the end of the file
+
+
+def writeShellcode(filename, shellcode, shellcode_offset):
+	"""
+	write shellcode to the filename
+	:param filename:
+	:param shellcode:
+	:param shellcode_offset:
+	:return:
+	"""
+	log.info("="*0x10 + 'write shellcode' + "="*0x10)
+
 	with open(filename, 'rb+') as fd:
 		fd.seek(shellcode_offset, 0)
 		fd.write(shellcode)
-	# todo fix phdr PT_LOAD 2
 
 
 def pltHook(elf, func_name, addr_addr):
@@ -195,7 +206,7 @@ def method1(filename):
 	addSegment(expanded_filename)
 	log.info("\t output filename: %s " % expanded_filename)
 
-	# 2 copy shellcode
+	# 2 generate and write shellcode
 	filename_protected = sys.argv[1] + '.protected'
 	shutil.copyfile(expanded_filename, filename_protected)
 	elf = ELF(filename_protected, checksec=False)
@@ -206,7 +217,10 @@ def method1(filename):
 	# shellcode base, is there any method to get vaddr from offset?
 	shellcode_base = elf.load_addr + elf.header.e_ehsize + os.path.getsize(expanded_filename)
 	func_name = [i for i in elf.plt][0]
-	copyShellcode(elf, func_name, shellcode_base)
+	shellcode = generateShellcode(elf, func_name, shellcode_base)
+	shellcode_offset = elf.vaddr_to_offset(shellcode_base)
+	writeShellcode(filename_protected, shellcode, shellcode_offset)
+
 
 	# 3 last plt hook . If plt is not the last, elf cannot find elf.plt[func_name]
 	pltHook(elf, func_name, shellcode_base)
@@ -233,16 +247,18 @@ def method2(filename):
 			log.info("\t find GNU_EH_FRAME @0x%x" % eh_frame_hdr_addr)
 			break
 
-	log.info("[1] start to copy shellcode")
+	# [1] start to generate and write shellcode
 	func_name = [i for i in elf.plt][0]
-	copyShellcode(elf, func_name, eh_frame_hdr_addr)
+	shellcode = generateShellcode(elf, func_name, eh_frame_hdr_addr)
+	shellcode_offset = elf.vaddr_to_offset(eh_frame_hdr_addr)
 
-	log.info("[2] plt hook")
+	writeShellcode(eh_frame_filename, shellcode, shellcode_offset)
+
+	# [2] plt hook
 	pltHook(elf, func_name, eh_frame_hdr_addr)
 
 	log.info("="*0x17 + 'enjoy' + "="*0x17)
 	log.info("Protected file is %s" % eh_frame_filename)
-
 
 
 if __name__ == '__main__':
@@ -261,4 +277,9 @@ if __name__ == '__main__':
 	if not os.path.exists(filename):
 		os._exit(-1)
 
-	method2(filename)
+	elf = ELF(filename, checksec=False)
+	if elf.arch != 'amd64':
+		log.error("Only support linux x86_64 binary now.")
+		os._exit(0)
+
+	method1(filename)
