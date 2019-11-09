@@ -42,16 +42,14 @@ samples/
 SECCOMP/
 
 	0-execve.c                  use execve syscall to getshell
-	0-execve-NR.c               get syscall number from <linux/unistd.h>
 	1-seccomp-and-system.c      use seccomp to restrict execve syscall 
 	2-my_protect-and-system.c   put seccomp in my_protect function , ref: linux man 
 	3-prctl-bpf-and-system.c    export seccomp to bpf and use two prctl syscall to implement it.
 	
-	asm-seccomp-intel.s         use prctl syscall written in assembly to restict execve syscall
-	asm-seccomp-AT&T.s          AT&T assembly, call it in .c 
-	scmp_filter_ctx.bpf         binary bpf, use `cat scmp_filter_ctx.bpf | xxd` to see it 
-	
-	4-prctl-asm-and-system.c    check the prctl shellcode 
+	4-1-asm-seccomp-intel.s     use prctl syscall written in assembly to restict execve syscall
+	4-2-asm-seccomp-AT&T.s      AT&T assembly, call it in .c 
+	4-3-prctl-asm-and-system.c  check the prctl shellcode 
+    scmp_filter_ctx.bpf         binary bpf, use `cat scmp_filter_ctx.bpf | xxd` to see it 
 
 ```
 
