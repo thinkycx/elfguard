@@ -1,3 +1,10 @@
+# 1. write intel asm
+# 2. convert to AT&T
+#       Intel2GAS
+#       python intel2gui.pyw
+# http://www.skywind.me/blog/archives/1244
+
+
 push r13
 push r12
 push rbp

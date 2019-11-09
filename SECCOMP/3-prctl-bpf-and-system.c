@@ -10,6 +10,14 @@
 #include <stdlib.h>
 #include <sys/prctl.h>
 
+
+/*
+    1. Write the SECCOMP rules into the .bpf file.
+    2. Use prctl to load the .bpf into the kernel.
+
+    gcc 3-prctl-bpf-and-system.c -lseccomp -o 3-prctl-bpf-and-system
+*/
+
 #define BPF_FILE "/tmp/scmp_filter_ctx.bpf"
 
 int my_protect_seccomp()
@@ -23,17 +31,17 @@ int my_protect_seccomp()
     if(rc < 0)
         goto out;
 
-    int fd = open(BPF_FILE, O_CREAT | O_WRONLY);
+    int fd = open(BPF_FILE, O_CREAT | O_WRONLY);          
     if(fd == -1){
         rc = -1;
         goto out;
     }
-    rc = seccomp_export_bpf(ctx, fd);
+    rc = seccomp_export_bpf(ctx, fd);               // write SECCOMP rules into a file.
     if(rc<0){
         close(fd);
         goto out;
     }
-    // seccomp_load(ctx);
+    // seccomp_load(ctx);                           // don't load it
 out:    
     seccomp_release(ctx);
     return (rc < 0 ? -rc : rc); 
@@ -58,16 +66,16 @@ int my_protect_prctl()
     
     printf("size is %d" , size);
     filter = malloc(size);
-    read(fd, filter, size);
-    struct sock_fprog prog = {
+    read(fd, filter, size);                             // write the SECCOMP rules into struct sock_filter
+    struct sock_fprog prog = {                          // initial the struct sock_fprog
         .len = (unsigned short) (size / sizeof(filter[0])),
         .filter = filter,
     };
-    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {       // call prctl
         perror("prctl");
         return -1;
     }
-    prctl(PR_SET_SECCOMP,SECCOMP_MODE_FILTER,&prog);
+    prctl(PR_SET_SECCOMP,SECCOMP_MODE_FILTER,&prog);    // call prctl  
 }
 
 int main()

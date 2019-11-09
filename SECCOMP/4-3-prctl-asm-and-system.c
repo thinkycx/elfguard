@@ -10,6 +10,17 @@
 #include <stdlib.h>
 #include <sys/prctl.h>
 
+
+/*
+    Use the asm code to
+        1. load the .bpf SECCOMP rules
+        2. call prtcl syscall
+    Notice:
+        1. you should see the .bpf file and push it into stack
+
+    gcc 4-3-prctl-asm-and-system.c -l seccomp -o 4-3-prctl-asm-and-system
+*/
+
 #define BPF_FILE "/tmp/scmp_filter_ctx.bpf"
 
 int my_protect_seccomp()
@@ -103,7 +114,7 @@ int shellcode()
   "  mov      $0x1, %%esi\n"
   "  mov      $0x26, %%edi\n"
   "  mov      $0x9d, %%eax\n"
-  "  syscall\n"
+  "  syscall\n"                         
 
   "  mov      %%r13, %%rdx\n"
   "  mov      $0x2, %%esi\n"
@@ -153,10 +164,10 @@ int main()
   "  push     %%rax\n"
   "  mov      $0x400000020, %%rax\n"
   "  push     %%rax\n"
-  "  mov      %%rsp, %%r12\n"
-  "  push     %%r12\n"
-  "  push     $0x7\n"
-  "  mov      %%rsp, %%r13\n"
+  "  mov      %%rsp, %%r12\n"       // r12 points to the binary rules
+  "  push     %%r12\n"              // prog.filter  
+  "  push     $0x7\n"               // prog.size    ( .bpf file length is 7 * 8)
+  "  mov      %%rsp, %%r13\n"       // r13 points to prog
   
   "  mov      $0x0, %%r8\n"
   "  mov      $0x0, %%ecx\n"
@@ -164,13 +175,13 @@ int main()
   "  mov      $0x1, %%esi\n"
   "  mov      $0x26, %%edi\n"
   "  mov      $0x9d, %%eax\n"
-  "  syscall\n"
+  "  syscall\n"                     // prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
   
   "  mov      %%r13, %%rdx\n"
   "  mov      $0x2, %%esi\n"
   "  mov      $0x16, %%edi\n"
   "  mov      $0x9d, %%eax\n"
-  "  syscall\n"
+  "  syscall\n"                     // prctl(PR_SET_SECCOMP,SECCOMP_MODE_FILTER,&prog);
   
   "  mov      %%rbp, %%rsp\n"
   "  pop      %%rbp\n"

@@ -3,8 +3,8 @@
 # date: 2019-03-19
 #
 # Usage:
-#    as asm-seccomp.s -o asm-seccomp.o
-#    ld asm-seccomp.o -o asm-seccomp
+#    as 4-2-asm-seccomp-AT\&T.s -o 4-2-asm-seccomp-AT\&T.o
+#    ld 4-2-asm-seccomp-AT\&T.o -o 4-2-asm-seccomp-AT\&T
 
 .section .text
 .globl _start
