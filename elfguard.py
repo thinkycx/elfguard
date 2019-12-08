@@ -14,15 +14,14 @@ context.log_level = 'info'
 
 def showMenu(usage):
 	menu = '''
-         __         ____                           __
-   _____/ /_  ___  / / /___ ___  ______ __________/ /
-  / ___/ __ \/ _ \/ / / __ `/ / / / __ `/ ___/ __  / 
- (__  ) / / /  __/ / / /_/ / /_/ / /_/ / /  / /_/ /  
-/____/_/ /_/\___/_/_/\__, /\__,_/\__,_/_/   \__,_/   
-                    /____/            
+    ______ __     ______ ______                         __
+   / ____// /    / ____// ____/__  __ ____ _ _____ ____/ /
+  / __/  / /    / /_   / / __ / / / // __ `// ___// __  / 
+ / /___ / /___ / __/  / /_/ // /_/ // /_/ // /   / /_/ /  
+/_____//_____//_/     \____/ \__,_/ \__,_//_/    \__,_/                                
 								[thinkycx@gmail.com]						
 	'''
-	menu_usage = 'Usage:  python shellguard.py <FILENAME>'
+	menu_usage = 'Usage:  python elfguard.py <FILENAME>'
 	if usage == 1:
 		menu += menu_usage
 
@@ -220,7 +219,6 @@ def method1(filename):
 	shellcode = generateShellcode(elf, func_name, shellcode_base)
 	shellcode_offset = elf.vaddr_to_offset(shellcode_base)
 	writeShellcode(filename_protected, shellcode, shellcode_offset)
-
 
 	# 3 last plt hook . If plt is not the last, elf cannot find elf.plt[func_name]
 	pltHook(elf, func_name, shellcode_base)

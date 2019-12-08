@@ -1,4 +1,4 @@
-# SHELLGUARD
+# ELFGuard
 This is a simple tool which helps you protect your ELF binary.
 
 # Prerequisites
@@ -7,7 +7,7 @@ This is a simple tool which helps you protect your ELF binary.
 
 # Usage
 ```python
-python shellguard.py <FILENAME>
+python elfguard.py <FILENAME>
 ```
 
 # What does it do?
@@ -36,7 +36,7 @@ samples/
     exp.py                      exploit for heapcreator
     heapcreator                 the vulnerable program
     heapcreator.expanded        segment expanded
-    heapcreator.protected       output of shellguard
+    heapcreator.protected       output of elfguard
     start.sh                    give it permissions to run
     
 SECCOMP/
@@ -75,71 +75,77 @@ LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA
 
 # demo
 ## method 1
-```bash
-[*] 
-             __         ____                           __
-       _____/ /_  ___  / / /___ ___  ______ __________/ /
-      / ___/ __ \/ _ \/ / / __ `/ / / / __ `/ ___/ __  / 
-     (__  ) / / /  __/ / / /_/ / /_/ / /_/ / /  / /_/ /  
-    /____/_/ /_/\___/_/_/\__, /\__,_/\__,_/_/   \__,_/   
-                        /____/            
-    								[thinkycx@gmail.com]						
-    	
+```
+$ python elfguard.py samples/heapcreator
+[*]
+        ______ __     ______ ______                         __
+       / ____// /    / ____// ____/__  __ ____ _ _____ ____/ /
+      / __/  / /    / /_   / / __ / / / // __ `// ___// __  /
+     / /___ / /___ / __/  / /_/ // /_/ // /_/ // /   / /_/ /
+    /_____//_____//_/     \____/ \__,_/ \__,_//_/    \__,_/
+                                    [thinkycx@gmail.com]
+
 [*] ================add segment================
 [*] [1] copy Program header table to the end...
 [*] [2] add new PT_LOAD phdr entry
-[*] 	 find PT_PHDR, going to fix it...
-[*] 	 find first PT_LOAD, going to add a new PT_LOAD...
-[*] 	 len(phdr_table) + e_phentsize : 230
-[*] 	 output filename: ./samples/heapcreator.expanded 
-[*] ================copy shellcode================
-[*] 	 shellcode base @ 0x403718 
-[*] 	 malloc PLT @ 0x400700, GOT @ 0x602050
-[*] 	 filename: ./samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
-[*] 	           new PLT @ 0x4037d5 
-[*] 	           PLT: 	 jmp [rip+0x1fe875]
-[*] 	 shellcode length: 0xc3
+[*]      find PT_PHDR, going to fix it...
+[*]      find first PT_LOAD, going to add a new PT_LOAD...
+[*]      len(phdr_table) + e_phentsize : 230
+[*]      output filename: samples/heapcreator.expanded
+[*] ================generate shellcode================
+[*]      shellcode base @ 0x403718
+[*]      malloc PLT @ 0x400700, GOT @ 0x602050
+[*]      filename: samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a
+[*]                new PLT @ 0x4037d5
+[*]                PLT:      jmp [rip+0x1fe875]
+[*]      shellcode length: 0xc3
+[*] ================write shellcode================
 [*] ================hook func@plt================
-[*] 	 patching malloc@plt 0x400700...
-[*] 	 shellcode load va : 0x403718
-[*] 	 jmp shellcode : 	 jmp [rip+0x3012]
-[*] 	 relative_offset 0x3012
-[*] 	 filename: ./samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
-[*] 	 filename: ./samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 12 30 00 00       jmp    DWORD PTR ds:0x3012 
+[*]      patching malloc@plt 0x400700...
+[*]      shellcode load va : 0x403718
+[*]      jmp shellcode :      jmp [rip+0x3012]
+[*]      relative_offset 0x3012
+[*]      filename: samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a
+[*]      filename: samples/heapcreator.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 12 30 00 00       jmp    DWORD PTR ds:0x3012
 [*] =======================enjoy=======================
-[*] Protected file is ./samples/heapcreator.protected
+[*] Protected file is samples/heapcreator.protected
 ```
 
 ## method2
-```bash
-[*] 
-             __         ____                           __
-       _____/ /_  ___  / / /___ ___  ______ __________/ /
-      / ___/ __ \/ _ \/ / / __ `/ / / / __ `/ ___/ __  / 
-     (__  ) / / /  __/ / / /_/ / /_/ / /_/ / /  / /_/ /  
-    /____/_/ /_/\___/_/_/\__, /\__,_/\__,_/_/   \__,_/   
-                        /____/            
-    								[thinkycx@gmail.com]						
-    	
-[*] 	 find GNU_EH_FRAME @0x401088
-[*] [1] start to copy shellcode
-[*] ================copy shellcode================
-[*] 	 shellcode base @ 0x401088 
-[*] 	 malloc PLT @ 0x400700, GOT @ 0x602050
-[*] 	 filename: ./samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
-[*] 	           new PLT @ 0x401145 
-[*] 	           PLT: 	 jmp [rip+0x200f05]
-[*] 	 shellcode length: 0xc3
-[*] [2] plt hook
-[*] ================hook func@plt================
-[*] 	 patching malloc@plt 0x400700...
-[*] 	 shellcode load va : 0x401088
-[*] 	 jmp shellcode : 	 jmp [rip+0x982]
-[*] 	 relative_offset 0x982
-[*] 	 filename: ./samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a 
-[*] 	 filename: ./samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 82 09 00 00       jmp    DWORD PTR ds:0x982 
-[*] =======================enjoy=======================
-[*] Protected file is ./samples/heapcreator-eh_frame.protected
 ```
+$ python elfguard.py samples/heapcreator
+[*]
+        ______ __     ______ ______                         __
+       / ____// /    / ____// ____/__  __ ____ _ _____ ____/ /
+      / __/  / /    / /_   / / __ / / / // __ `// ___// __  /
+     / /___ / /___ / __/  / /_/ // /_/ // /_/ // /   / /_/ /
+    /_____//_____//_/     \____/ \__,_/ \__,_//_/    \__,_/
+                                    [thinkycx@gmail.com]
+
+[*]      find GNU_EH_FRAME @0x401088
+[*] ================generate shellcode================
+[*]      shellcode base @ 0x401088
+[*]      malloc PLT @ 0x400700, GOT @ 0x602050
+[*]      filename: samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a
+[*]                new PLT @ 0x401145
+[*]                PLT:      jmp [rip+0x200f05]
+[*]      shellcode length: 0xc3
+[*] ================write shellcode================
+[*] ================hook func@plt================
+[*]      patching malloc@plt 0x400700...
+[*]      shellcode load va : 0x401088
+[*]      jmp shellcode :      jmp [rip+0x982]
+[*]      relative_offset 0x982
+[*]      filename: samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 4a 19 20 00       jmp    DWORD PTR ds:0x20194a
+[*]      filename: samples/heapcreator-eh_frame.protected vaddr: 0x400700 disasmmbly:   400700:       ff 25 82 09 00 00       jmp    DWORD PTR ds:0x982
+[*] =======================enjoy=======================
+[*] Protected file is samples/heapcreator-eh_frame.protected
+```
+
+
+## others
+1. How to ge the ascii picture?
+http://patorjk.com/software/taag/#p=display&h=1&f=Slant&t=ELFGuard
+
 
 
