@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 # date: 2019-03-19
+# update: 2019-12-15
 # author: thinkycx
 
 
@@ -48,20 +50,22 @@ def addSegment(filename):
 	log.debug("e_phoff: " + hex(e_phoff) + " e_phnum: " + hex(e_phnum) + " e_phentsize: " + hex(e_phentsize))
 
 	with open(filename, 'rb+') as fd:
-		# append program header table to the end and fix Elf64_Ehdr->e_phoff
+		# append program header table to the end and update Elf64_Ehdr->e_phoff
 		log.info("[1] copy Program header table to the end...")
 
-		# fix ELF header first
-		# fix e_phoff to raw file size
+		# 1. update ELF header first
+		# update PHDR position:  0x40 -> filesize
 		fd.seek(0x20, 0)                           # mov fd to Elf64_Ehdr->e_phoff
 		fd.write(p64(raw_filesize))                # change Elf64_Ehdr->e_phoff to filesize
 
-		# fix e_phnum to e_phnum + 1
+		# update e_phnum to e_phnum + 1
 		fd.seek(0x38, 0)
-		fd.write(p16(e_phnum+1))
+		fd.write(p16(e_phnum+1))				   # for the new PT_LOAD entry in new Program Header Table
+
 		now_filesize = raw_filesize + e_phnum*e_phentsize        # update now filesize
 
-		# write phdr table to the end
+		log.info("[2] add new PT_LOAD phdr entry")
+		# 2. copy phdr table to the end
 		# read phdr table
 		fd.seek(e_phoff, 0)                        # mov fd to Elf64_Ehdr->e_phoff
 		phdr_table = fd.read(e_phnum*e_phentsize)  # read program header table value
@@ -70,16 +74,15 @@ def addSegment(filename):
 		fd.seek(0, 2)                              # mov fd to file end
 		fd.write(phdr_table)                       # append program header table to the end
 
-		# fix new Program Header Table and add new PT_LOAD to load it
-		log.info("[2] add new PT_LOAD phdr entry")
+		# update new Program Header Table and add new PT_LOAD to load it
 		fd.seek(raw_filesize)
 		phdr = [phdr_table[i*e_phentsize:i*e_phentsize+e_phentsize] for i in range(e_phnum)]    # get phdr list
 		log.debug(b"raw phdr: " + b''.join(phdr))
 
 		for i in range(len(phdr)):
-			# fix the new Program Header Table
+			# update the first entry in PHDR( load the new Program Header Table)
 			if u32(phdr[i][0:4]) == 0x6:
-				log.info("\t find PT_PHDR, going to fix it...")
+				log.info("\t find PT_PHDR, going to fix it...")								 
 				tmp = phdr[i]
 				tmp = util.replaceStr(tmp, 0x08, p64(raw_filesize))                          # p_offset
 				tmp = util.replaceStr(tmp, 0x10, p64(0x400000 + raw_filesize))               # p_pvaddr
@@ -90,7 +93,6 @@ def addSegment(filename):
 
 			# add new PT_LOAD to load new Program Header Table and maybe shellcode in future
 			# todo IDA cannot load it and pwntools command: got  is also failed
-			segAlign = (len(phdr_table) + e_phentsize) % 0x10
 			if u32(phdr[i][0:4]) == 0x1:
 				log.info("\t find first PT_LOAD, going to add a new PT_LOAD...")
 				log.info("\t len(phdr_table) + e_phentsize : %x", len(phdr_table) + e_phentsize);
@@ -99,8 +101,8 @@ def addSegment(filename):
 				new_phdr = util.replaceStr(new_phdr, 0x8, p64(raw_filesize))                             # p_offset
 				new_phdr = util.replaceStr(new_phdr, 0x10, p64(0x400000 + raw_filesize))                 # p_pvaddr
 				new_phdr = util.replaceStr(new_phdr, 0x18, p64(0x400000 + raw_filesize))                 # p_paddr
-				new_phdr = util.replaceStr(new_phdr, 0x20, p64(len(phdr_table) + e_phentsize + 0xc3))    # p_filesz
-				new_phdr = util.replaceStr(new_phdr, 0x28, p64(len(phdr_table) + e_phentsize + 0xc3))# p_memsz
+				new_phdr = util.replaceStr(new_phdr, 0x20, p64(len(phdr_table) + e_phentsize + 0xc3))    # p_filesz, 0xc3 is not needed, if storage < 0x1000
+				new_phdr = util.replaceStr(new_phdr, 0x28, p64(len(phdr_table) + e_phentsize + 0xc3))    # p_memsz
 				phdr.insert(i+1, new_phdr)
 				break
 
@@ -216,6 +218,9 @@ def method1(filename):
 	# shellcode base, is there any method to get vaddr from offset?
 	shellcode_base = elf.load_addr + elf.header.e_ehsize + os.path.getsize(expanded_filename)
 	func_name = [i for i in elf.plt][0]
+	# print "func_name", [i for i in elf.plt]
+	# func_name = 'fopen'
+	# Notice that, some programs don't have a lazy binding. 20191210
 	shellcode = generateShellcode(elf, func_name, shellcode_base)
 	shellcode_offset = elf.vaddr_to_offset(shellcode_base)
 	writeShellcode(filename_protected, shellcode, shellcode_offset)
