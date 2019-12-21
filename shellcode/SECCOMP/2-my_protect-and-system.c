@@ -19,7 +19,10 @@ int my_protect()
     ctx = seccomp_init(SCMP_ACT_ALLOW);
     if(ctx == NULL)
         return ENOMEM;
-    rc = seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(execve), 0);
+    // rc = seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(execve), 0);
+    // restrict execve arg1 SCMP_A0(SCMP_CMP_EQ, "/bin/sh")
+    rc = seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(execve), 1, SCMP_A0(SCMP_CMP_EQ, "/bin/sh"));
+
     if(rc < 0)
         goto out;
     seccomp_load(ctx);

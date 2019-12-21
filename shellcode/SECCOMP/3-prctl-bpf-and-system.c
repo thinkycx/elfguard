@@ -16,6 +16,8 @@
     2. Use prctl to load the .bpf into the kernel.
 
     gcc 3-prctl-bpf-and-system.c -lseccomp -o 3-prctl-bpf-and-system
+
+    b
 */
 
 #define BPF_FILE "/tmp/scmp_filter_ctx.bpf"
@@ -28,22 +30,29 @@ int my_protect_seccomp()
     if(ctx == NULL)
         return ENOMEM;
     rc = seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(execve), 0);
+    // rc = seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(execve), 1, SCMP_A0_64(SCMP_CMP_EQ, "/bin/sh"));
+
     if(rc < 0)
         goto out;
 
     int fd = open(BPF_FILE, O_CREAT | O_WRONLY);          
     if(fd == -1){
         rc = -1;
+        write(1, "open failed\n", 12);
         goto out;
     }
+    ftruncate(fd,0);    /* 清空文件 */
+    lseek(fd,0,SEEK_SET);   /* 重新设置文件偏移量 */
     rc = seccomp_export_bpf(ctx, fd);               // write SECCOMP rules into a file.
     if(rc<0){
         close(fd);
+        write(1, "export failed\n", 12);
         goto out;
     }
     // seccomp_load(ctx);                           // don't load it
 out:    
     seccomp_release(ctx);
+    close(fd);
     return (rc < 0 ? -rc : rc); 
 }
 
@@ -64,13 +73,16 @@ int my_protect_prctl()
         return -1;
     }
     
-    printf("size is %d" , size);
+    // printf("size is %d\n" , size);
     filter = malloc(size);
     read(fd, filter, size);                             // write the SECCOMP rules into struct sock_filter
     struct sock_fprog prog = {                          // initial the struct sock_fprog
-        .len = (unsigned short) (size / sizeof(filter[0])),
-        .filter = filter,
+        .len = (unsigned short) (size / sizeof(filter[0])),         // unsigned short 2byte
+        .filter = filter,                                           // pointer array
     };
+    printf("size %d\n", prog.len);
+    printf("size %p\n", &prog.len);
+
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {       // call prctl
         perror("prctl");
         return -1;
@@ -83,6 +95,9 @@ int main()
 	char *filename = "/bin/sh";
 	char *argv[] = {"/bin/sh", NULL};
 	char *envp[] = {NULL};
+
+    // my_protect_seccomp();
+    
     my_protect_prctl();
 
     syscall(__NR_execve, filename, argv, envp);
