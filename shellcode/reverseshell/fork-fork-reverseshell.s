@@ -100,4 +100,4 @@ after_3:
     pop rax
     syscall
 fork_fork_shellcode_end:
- nop; nop; nop;
+ nop;
