@@ -3,6 +3,8 @@
 # author: thinkycx
 # date: 2018-10-31
 from pwn import *
+import sys
+
 context.local(arch='amd64', os='linux')
 
 def create(size,content):
@@ -66,18 +68,18 @@ def pwn(io):
 
 if __name__ == '__main__':
     global io, elf, libc, debug
-    local, debug = 1, 0
+    local, debug = 0, 0
     # context.log_level = 'debug'
     filename = './heapcreator'
-    import sys
-    filename = sys.argv[1]
+    port = sys.argv[1]
     elf = ELF(filename)
+    libc = ELF('/lib/x86_64-linux-gnu/libc.so.6')
     if local:
         io = process(filename)
-        # io = process(filename, env={"LD_PRELOAD":"/tmp/libc.so"})
-        libc = ELF('/lib/x86_64-linux-gnu/libc.so.6')
         # context.terminal = ['tmux', '-x', 'sh', '-c']
-        context.terminal = ['tmux', 'splitw', '-h' ]
+        # context.terminal = ['tmux', 'splitw', '-h' ]
+    else:
+        io = remote('127.0.0.1', port)
     pwn(io)
     # io.sendline('echo getshell')
     #print io.recv()

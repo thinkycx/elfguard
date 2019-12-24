@@ -2,15 +2,15 @@
 date: 20191216
 author: thinkycx
 usage:
-     gcc inject-shellcode.c -o inject-shellcode-pie-static -fpic -fpie --static
+     gcc fork-fork-reverseshell.c -o fork-fork-reverseshell-pie-static -fpic -fpie --static
 description:
      use this to run command 
 ref:
     https://www.mi1k7ea.com/2019/03/24/C编写实现Linux反弹shell/
 
 result:
-        root      5327  4612  0 10:03 pts/2    00:00:00 ./inject-shellcode.c-pie-static
-        root      5328  5327  0 10:03 pts/2    00:00:00 [inject-shellcode.c-p] <defunct>
+        root      5327  4612  0 10:03 pts/2    00:00:00 ./fork-fork-reverseshell-pie-static
+        root      5328  5327  0 10:03 pts/2    00:00:00 [fork-fork-reverseshell-p] <defunct>
         root      5329     0  0 10:03 pts/2    00:00:00 [bash]
         |
         v
