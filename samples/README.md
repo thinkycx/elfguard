@@ -3,6 +3,5 @@
 samples/
     exp.py                      exploit for heapcreator
     heapcreator                 the vulnerable program
-    heapcreator-expanded.out        segment expanded
-    heapcreator-protected.out       output of elfguard
+    vim                         a test example, should be hooked by entryhook
 ```
