@@ -8,7 +8,7 @@
 	Put the SECCOMP function into my_protect() function.
 	Also the program will receive a SIGNAL and is goint to be killed.
 
-    gcc 2-my_protect-and-system.c -lseccomp -o 2-my_protect-and-system
+    gcc 2-my_protect-and-system.c -lseccomp -o 2-my_protect-and-system.out
   
 */
 

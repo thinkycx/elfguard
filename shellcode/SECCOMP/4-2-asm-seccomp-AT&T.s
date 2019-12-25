@@ -4,7 +4,7 @@
 #
 # Usage:
 #    as 4-2-asm-seccomp-AT\&T.s -o 4-2-asm-seccomp-AT\&T.o
-#    ld 4-2-asm-seccomp-AT\&T.o -o 4-2-asm-seccomp-AT\&T
+#    ld 4-2-asm-seccomp-AT\&T.o -o 4-2-asm-seccomp-AT\&T.out
 
 .section .text
 .globl _start

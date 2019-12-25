@@ -18,7 +18,7 @@
     Notice:
         1. you should see the .bpf file and push it into stack
 
-    gcc 4-3-prctl-asm-and-system.c -l seccomp -o 4-3-prctl-asm-and-system
+    gcc 4-3-prctl-asm-and-system.c -l seccomp -o 4-3-prctl-asm-and-system.out
 */
 
 #define BPF_FILE "/tmp/scmp_filter_ctx.bpf"
