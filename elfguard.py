@@ -22,13 +22,25 @@ def test(filename):
 
 	# expand the new file 
     storageObject = Storage(expanded_filename)
-    shellcode_offset, shellcode_max_length = storageObject.expandSegment() # expandSegment() or addSegment() or eh_frameSegment()
+
+    if args.storage == 'expand':
+        shellcode_offset, shellcode_max_length = storageObject.expandSegment()
+    elif args.storage == 'add':
+        shellcode_offset, shellcode_max_length = storageObject.addSegment() 
+    elif args.storage == 'eh_frame':
+        shellcode_offset, shellcode_max_length = storageObject.eh_frameSegment()
+    else:
+        log.error("invalid args.storage: %s" % args.storage)
 
     log.info("\t output filename: %s " % expanded_filename)
 
     # get shellcode
-    core_shellcode = shellcode.reverseshell.forkfork_reverseshell.get_shellcode('127.0.0.1', 7777)
-    # core_shellcode = shellcode.SECCOMP.seccomp.get_shellcode()
+    if args.shellcode == 'reverseshell':
+        core_shellcode = shellcode.reverseshell.forkfork_reverseshell.get_shellcode(args.ip, int(args.port))
+    elif args.shellcode == 'seccomp':
+        core_shellcode = shellcode.SECCOMP.seccomp.get_shellcode()
+    else:
+        log.error("invalid args.shellcode: %s" % args.shellcode)
 
     # [2] copy filename into a new file
     filename_protected = filename + '-protected.out'
@@ -37,11 +49,13 @@ def test(filename):
 
     controllerObject = Controller(filename_protected, shellcode_offset, core_shellcode)
     # you should debug to see which func to be hooked. Notice that some programs don't have a lazy binding. 20191210
-	# for heapcreator
-    # controllerObject.pltHookControl(method='func_name', func_name='malloc', func_plt_number=2)
-    controllerObject.pltHookControl(method='func_plt_number', func_name='malloc', func_plt_number=2)
-	# for vim
-    # controllerObject.entrypointHook()
+    # for heapcreator
+    if args.controller == 'plthook':
+        controllerObject.pltHookControl(method=args.method, func_name=args.mfunc_name, func_plt_number=args.mplt_num)
+    elif args.controller =='entryhook':
+        controllerObject.entrypointHook()
+    else:
+        log.error("invalid args.controller: %s" % args.controller )
 
     log.info("="*0x17 + 'enjoy' + "="*0x17)
     log.info("Protected file is %s" % filename_protected)    
@@ -49,27 +63,24 @@ def test(filename):
 
 def main():
     # show menu
-    if len(sys.argv) != 2:
-        util.showMenu(usage=1)
-        os._exit(0)
-    else:
-        util.showMenu(usage=0)
+    # if len(sys.argv) != 2:
+    #     util.showMenu(usage=1)
+    #     os._exit(0)
+    # else:
+    #     util.showMenu(usage=0)
+    global args 
+    args = util.menu()
 
     global context
     context.local(arch='amd64', os='linux')
     context.log_level = 'info'
 
-    filename = sys.argv[1]
-    log.info("filename: %s" % filename)
-    if not os.path.exists(filename):
-        os._exit(-1)
-
-    elf = ELF(filename, checksec=False)
+    elf = ELF(args.filename, checksec=False)
     if elf.arch != 'amd64':
         log.error("Only support linux x86_64 binary now.")
         os._exit(0)
 
-    test(filename)
+    test(args.filename)
 
 if __name__ == '__main__':
     main()

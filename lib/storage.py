@@ -144,6 +144,7 @@ class Storage(object):
         the space is: 0x401088 - 0x402000 or more
         thanks to p4nda@DUBHE http://p4nda.top/2018/07/02/patch-in-pwn/
         '''
+        log.info("eh_frame()")
         eh_frame_hdr_addr = 0
         for segment in self.elf.segments:
             if segment.header.p_type == 'PT_GNU_EH_FRAME':

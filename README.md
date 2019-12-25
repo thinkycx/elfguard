@@ -1,11 +1,14 @@
 # ELFGuard
 ELFGuard is a simple tool which helps you to guard your ELF binary.  
 You could insert the shellcode into the ELF binary to do anything you want, such as 
+
 1. use a SECCOMP shellcode to restrict syscalls
 2. use a reverse shell shellcode to leave a backdoor
 3. ... 
 
 Only support amd64 arch now. Wish you enjoy it and don't be evil ;)
+
+![menu](docs/image-1.png)
 
 # Prerequisites
 - python2  
@@ -14,7 +17,7 @@ Only support amd64 arch now. Wish you enjoy it and don't be evil ;)
 
 # Usage
 ```python
-python elfguard.py <FILENAME>
+python elfguard.py -f /bin/bash
 ```
 
 # Modules
@@ -63,8 +66,6 @@ SECCOMP/
 
 ```
 
-
 # TODO
-- [x] divide into 3 modules
 - [ ] i386 arch supported
 - [ ] more shellcode
