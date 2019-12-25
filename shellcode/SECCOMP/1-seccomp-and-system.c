@@ -13,7 +13,7 @@
 	Then, you will find *.h in/usr/include/
 		seccomp.h
 		./linux/seccomp.h
-	gcc 1-seccomp-and-system.c -o 1-seccomp-and-system -lseccomp
+	gcc 1-seccomp-and-system.c -o 1-seccomp-and-system.out -lseccomp
 */
 
 int main(void){

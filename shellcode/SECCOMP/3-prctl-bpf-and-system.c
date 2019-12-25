@@ -15,7 +15,7 @@
     1. Write the SECCOMP rules into the .bpf file.
     2. Use prctl to load the .bpf into the kernel.
 
-    gcc 3-prctl-bpf-and-system.c -lseccomp -o 3-prctl-bpf-and-system
+    gcc 3-prctl-bpf-and-system.c -lseccomp -o 3-prctl-bpf-and-system.out
 
     b
 */

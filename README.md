@@ -32,5 +32,6 @@ control the flow control:
 - PLT HOOK
 
 # TODO
+- [x] OOP
 - [ ] i386 arch supported
 - [ ] more shellcode
