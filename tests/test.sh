@@ -25,6 +25,7 @@ runCommand(){
 set -e
 
 echoColor $red "Start test..."
+runCommand "python ../elfguard.py -h"
 
 echoColor $green "test storage module"
 runCommand "python ../elfguard.py -f ../samples/heapcreator -st expand"
@@ -37,6 +38,9 @@ runCommand "python ../elfguard.py -f ../samples/heapcreator -st expand -sc secco
 
 echoColor $green "test controller module"
 runCommand "python ../elfguard.py -f ../samples/heapcreator -st expand -c plthook"
+runCommand "python ../elfguard.py -f ../samples/heapcreator -st expand -c plthook -m func_plt_number -mp 0"
+runCommand "python ../elfguard.py -f ../samples/heapcreator -st expand -c plthook -m func_name -mf malloc"
+
 runCommand "python ../elfguard.py -f ../samples/heapcreator -st expand -c entryhook" 
 
 echoColor $green "Congratulations! All test cases have been passed!"
